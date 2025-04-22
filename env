@@ -1,0 +1,2 @@
+PORT=5000
+CONNECTION_STRING=postgresql://postgres:amino@123@201.49.219.14:5432/Amino #Conexão com a base de dados
