@@ -1,15 +1,15 @@
-require("dotenv").config(); // conexão com o arquivo .env
+import express from "express";
+import dotenv from "dotenv";
+import formulaRoute from "./routes/formulas.js";
 
-const port = process.env.PORT;
-
-const express = require("express");
+dotenv.config();
 
 const app = express();
+const port = process.env.PORT || 3000;
 
-app.get("/", (request,response) => { //criação da rota
-    response.json({message: "Rota funcionando"})
-})
+app.use(express.json()); // Para garantir que o corpo das requisições seja lido
+app.use('/', formulaRoute); // -> Rota de Formulas
 
-app.listen(port);
-
-console.log("Backend Rodando");
+app.listen(port, () => {
+  console.log(`🚀 Servidor rodando na porta ${port}`);
+});
