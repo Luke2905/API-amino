@@ -75,7 +75,7 @@ aplicacaoRoute.post("/Alterar", async (req, res) => {
 aplicacaoRoute.get("/Listar", async (_req, res) => {
   try {
     const client = await pool.connect();
-    const result = await client.query("SELECT * FROM aplicacao");
+    const result = await client.query("SELECT * FROM aplicacao ORDER BY titulo ASC;");
     client.release();
 
     res.json(result.rows);
