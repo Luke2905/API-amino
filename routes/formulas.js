@@ -19,7 +19,7 @@ const pool = new Pool({
 formulaRoute.use(express.json());
 formulaRoute.use(cors());
 
-//-------------- Rota para Buscar as Formulas -----------------------------------
+//-------------- Rota para Exibir as Formulas -----------------------------------
 formulaRoute.get("/formulas", async (req, res) => {
   try {
     const client = await pool.connect();
@@ -30,6 +30,37 @@ formulaRoute.get("/formulas", async (req, res) => {
   } catch (err) {
     console.error("Erro ao buscar fórmulas:", err);
     res.status(500).json({ error: "Erro ao buscar fórmulas" });
+  }
+});
+
+//-------------- Rota para Buscar as Formulas -----------------------------------
+formulaRoute.get("/busca", async (req, res) => {
+  try {
+    const client = await pool.connect();
+  
+    const query = `
+      SELECT
+        sis.id,
+        fam.titulo AS familia_titulo,
+        ap.titulo AS aplicacao_titulo,
+        sis.titulo AS sistema_titulo,
+        sis.descricao,
+        sis.revisao,
+        sis."dataCriacao",
+        sis."dataUltimaRevisao"
+      FROM sistema sis
+      INNER JOIN familia fam ON fam.id = sis."idFamilia"
+      INNER JOIN "sistemaAplicacao" sas ON sas."idSistema" = sis.id
+      INNER JOIN aplicacao ap ON ap.id = sas."idAplicacao"
+    `;
+  
+    const result = await client.query(query);
+    client.release();
+  
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Erro ao buscar sistemas:", err);
+    res.status(500).json({ error: "Erro ao buscar sistemas" });
   }
 });
 
@@ -86,5 +117,9 @@ formulaRoute.post("/novaformula", async (req, res) => {
       res.status(500).json({ error: "Erro ao inserir fórmula" });
     }
   });
+
+
+/* ------------------ Rota para deletar uma fórmula ----------------------*/
+
 
 export default formulaRoute;
