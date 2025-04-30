@@ -16,6 +16,8 @@ const pool = new Pool({
   connectionString: process.env.CONNECTION_STRING
 });
 
+
+
 formulaRoute.use(express.json());
 formulaRoute.use(cors());
 
@@ -73,7 +75,7 @@ formulaRoute.get("/formula/:id", async (req, res) => {
       const client = await pool.connect();
       
       // Usando parâmetro para evitar SQL Injection
-      const sql = "SELECT * FROM formula WHERE codigo = $1";
+      const sql = "SELECT * FROM formula WHERE id = $1";
       const result = await client.query(sql, [id]);
       
       client.release();
@@ -120,6 +122,25 @@ formulaRoute.post("/novaformula", async (req, res) => {
 
 
 /* ------------------ Rota para deletar uma fórmula ----------------------*/
+formulaRoute.delete("/deletarFormula/:id", async (req, res) => {
+  const id = req.params.id;
+
+  try {
+    const client = await pool.connect();
+    const sql = "DELETE FROM formula WHERE id = $1 RETURNING *";
+    const result = await client.query(sql, [id]);
+    client.release();
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: "Fórmula não encontrada" });
+    } else {
+      res.json(result.rows[0]);
+    }
+  } catch (err) {
+    console.error("Erro ao deletar fórmula:", err);
+    res.status(500).json({ error: "Erro ao deletar fórmula" });
+  }
+});
 
 
 export default formulaRoute;
