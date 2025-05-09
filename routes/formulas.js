@@ -69,28 +69,60 @@ formulaRoute.get("/busca", async (req, res) => {
 
 //------------- Rota de Busca Individual de Formula -----------------------------------
 formulaRoute.get("/formula/:id", async (req, res) => {
-    const id = req.params.id; // -> busca o id
-  
-    try {
-      const client = await pool.connect();
-      
-      // Usando parâmetro para evitar SQL Injection
-      const sql = "SELECT * FROM formula WHERE id = $1";
-      const result = await client.query(sql, [id]);
-      
-      client.release();
-  
-      if (result.rows.length === 0) {
-        res.status(404).json({ error: "Fórmula não encontrada" });
-      } else {
-        res.json(result.rows[0]); // retorna apenas uma fórmula
-      }
-  
-    } catch (err) {
-      console.error("Erro ao buscar fórmula:", err);
-      res.status(500).json({ error: "Erro ao buscar fórmula" });
+  const id = req.params.id;
+
+  try {
+    const client = await pool.connect();
+
+    const sql = `
+      SELECT 
+        f.id,
+        f.codigo,
+        f.titulo,
+        f.preco,
+        f.descricao,
+        f.justificativa,
+        c.descricao AS componente,
+        fc.ordem,
+        fc.proporcao
+      FROM formula f
+      LEFT JOIN "formulaComponente" fc ON fc."idFormula" = f.id
+      LEFT JOIN componente c ON fc."idComponente" = c.id
+      WHERE f.id = $1
+      ORDER BY fc.ordem ASC;
+    `;
+    
+    const result = await client.query(sql, [id]);
+    client.release();
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Fórmula não encontrada" });
     }
-  });
+
+    // Organiza os dados
+    const formulaBase = {
+      id: result.rows[0].id,
+      codigo: result.rows[0].codigo,
+      titulo: result.rows[0].titulo,
+      preco: result.rows[0].preco,
+      descricao: result.rows[0].descricao,
+      justificativa: result.rows[0].justificativa,
+      componentes: result.rows
+      .filter(row => row.componente) // só se existir componente
+      .map(row => ({
+        componente: row.componente,
+        ordem: row.ordem,
+        proporcao: row.proporcao
+          }))
+    };
+
+    res.json(formulaBase);
+    
+  } catch (err) {
+    console.error("Erro ao buscar fórmula:", err);
+    res.status(500).json({ error: "Erro ao buscar fórmula" });
+  }
+});
   
 
 //------------- Rota de incerção de Formula -----------------------------------
@@ -142,5 +174,27 @@ formulaRoute.delete("/deletarFormula/:id", async (req, res) => {
   }
 });
 
+// Alterar Formula
+formulaRoute.put("/alterarFormula/:id", async (req, res) => {
+  const { titulo, preco, codigo, descricao, justificativa } = req.body;
+  const { id } = req.params; // <- CORRETO, vem da URL
+
+  try {
+    const client = await pool.connect();
+    const query = `
+      UPDATE formula
+      SET titulo = $1, preco = $2, codigo = $3, descricao = $4, justificativa = $5
+      WHERE id = $6
+      RETURNING *
+    `;
+    const result = await client.query(query, [titulo, preco, codigo, descricao, justificativa, id]);
+    client.release();
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Erro ao alterar Formula:", err);
+    res.status(500).json({ error: "Erro ao alterar Formula" });
+  }
+});
 
 export default formulaRoute;
