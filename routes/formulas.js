@@ -196,5 +196,66 @@ formulaRoute.put("/alterarFormula/:id", async (req, res) => {
     res.status(500).json({ error: "Erro ao alterar Formula" });
   }
 });
+/* ------------------ Rota para Visualizar propriedades uma fórmula ----------------------*/
+formulaRoute.get("/formulapropriedades/:id", async (req, res) => {
+  const id = req.params.id;
+
+  try {
+    const client = await pool.connect();
+
+    const query = `
+      SELECT 
+        sis.id,  
+        sis.titulo AS nome, 
+        fam.titulo AS familia, 
+        ap.titulo AS aplicacao,
+        sis.descricao AS descricao, 
+        sis.revisao, 
+        sis."dataCriacao" AS criacao, 
+        sis."dataUltimaRevisao" AS dt_revisao,
+        p.nome AS propriedade,
+        sp."valorVariacaoInferior",
+        sp."valorVariacaoSuperior"
+      FROM sistema sis
+      INNER JOIN familia fam ON fam.id = sis."idFamilia"
+      INNER JOIN "sistemaAplicacao" sas ON sas."idSistema" = sis.id
+      INNER JOIN aplicacao ap ON ap.id = sas."idAplicacao"
+      LEFT JOIN "sistemaPropriedade" sp ON sp."idSistema" = sis.id
+      LEFT JOIN propriedade p ON p.id = sp."idPropriedade"
+      WHERE sis.id = $1
+    `;
+
+    const result = await client.query(query, [id]);
+    client.release();
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Fórmula não encontrada" });
+    }
+
+    // Monta o objeto base com as informações principais
+    const formulaBase = {
+      id: result.rows[0].id,
+      nome: result.rows[0].nome,
+      familia: result.rows[0].familia,
+      descricao: result.rows[0].descricao,
+      aplicacao: result.rows[0].aplicacao,
+      revisao: result.rows[0].revisao,
+      dt_revisao: result.rows[0].dt_revisao,
+      propriedades: result.rows
+        .filter(row => row.propriedade !== null)
+        .map(row => ({
+          propriedade: row.propriedade,
+          valorVariacaoInferior: row.valorVariacaoInferior,
+          valorVariacaoSuperior: row.valorVariacaoSuperior
+        }))
+    };
+
+    return res.json(formulaBase);
+
+  } catch (err) {
+    console.error("Erro ao buscar sistemas:", err);
+    return res.status(500).json({ error: "Erro ao buscar sistemas" });
+  }
+});
 
 export default formulaRoute;
